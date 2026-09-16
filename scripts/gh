@@ -4,10 +4,20 @@ set -eu
 REAL_GH=/usr/bin/gh
 TOKEN_HELPER=/usr/local/lib/hermes/github_app_token.py
 
-# Respect an explicitly supplied token for administrative/debug sessions.
+# Prefer the narrowly-scoped GitHub App whenever it is provisioned. Railway may
+# still carry a legacy GH_TOKEN; letting that win would silently restore broad,
+# user-scoped access and defeat the purpose of installing the App.
+APP_DIR="${HERMES_GITHUB_APP_DIR:-/data/.hermes/github-app}"
+if [ -s "$APP_DIR/app-id" ] \
+   && [ -s "$APP_DIR/installation-id" ] \
+   && [ -s "$APP_DIR/private-key.pem" ]; then
+  token="$($TOKEN_HELPER)" || exit $?
+  GH_TOKEN="$token" GITHUB_TOKEN= exec "$REAL_GH" "$@"
+fi
+
+# Keep an explicitly supplied token as a fallback for unprovisioned installs.
 if [ -n "${GH_TOKEN:-}" ] || [ -n "${GITHUB_TOKEN:-}" ]; then
   exec "$REAL_GH" "$@"
 fi
 
-token="$($TOKEN_HELPER)" || exit $?
-GH_TOKEN="$token" exec "$REAL_GH" "$@"
+exec "$TOKEN_HELPER"
