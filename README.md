@@ -68,6 +68,7 @@ Message your Telegram bot. If you're a new user, a pairing request will appear i
 | `PORT` | `8080` | Web server port (set automatically by Railway) |
 | `ADMIN_USERNAME` | `admin` | Login username |
 | `ADMIN_PASSWORD` | *(auto-generated)* | Login password — if unset, a random password is printed to the deploy logs. Changing it redeploys the service, which signs everyone out. |
+| `HERMES_DESKTOP_ACCESS_TOKEN` | *(unset)* | Optional 32+ character token for Hermes Desktop. Send it as the `X-Hermes-Desktop-Token` extra gateway header. This does not replace the browser admin password. |
 | `HERMES_REF` | *(pinned in Dockerfile)* | Hermes Agent version to install (any upstream git tag/branch). Set this to override the Dockerfile default without editing code — see [Updating Hermes](#updating-hermes). |
 
 All other configuration (LLM provider, model, channels, tools) is managed through the admin dashboard.
@@ -117,6 +118,30 @@ docker run --rm -it -p 8080:8080 -e PORT=8080 -e ADMIN_PASSWORD=changeme -v herm
 ```
 
 Open `http://localhost:8080` and log in with `admin` / `changeme`.
+
+## Connecting Hermes Desktop
+
+The template's browser dashboard uses an HTML form and cookie, while Hermes
+Desktop connects directly to the native API and WebSocket endpoints. Configure
+a separate, high-entropy access token so Desktop can cross the outer proxy:
+
+1. Add a Railway service variable named `HERMES_DESKTOP_ACCESS_TOKEN` with at
+   least 32 random characters, then redeploy.
+2. In Hermes Desktop, open **Settings → Gateways → Remote gateway** and enter
+   the Railway service URL, for example `https://your-service.up.railway.app`.
+3. Under **Extra gateway headers**, add:
+
+   ```text
+   X-Hermes-Desktop-Token: <the Railway variable value>
+   ```
+
+4. Test the connection, then choose **Save and reconnect**. If Desktop asks for
+   the native basic-auth login, use the `ADMIN_USERNAME` and `ADMIN_PASSWORD`
+   values configured on Railway.
+
+The custom header is accepted for HTTP and WebSocket requests. When the
+variable is absent, behavior is unchanged and only the browser cookie can pass
+the outer proxy.
 
 ## Updating Hermes
 

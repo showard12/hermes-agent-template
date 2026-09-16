@@ -240,6 +240,24 @@ if not ADMIN_PASSWORD:
 else:
     print(f"[server] Admin username: {ADMIN_USERNAME}", flush=True)
 
+# Hermes Desktop cannot complete this template's outer HTML form/cookie login:
+# it probes the native Hermes API directly and opens WebSockets from Electron.
+# Desktop supports connection-scoped custom headers on both transports, so a
+# separate high-entropy token lets it through the outer proxy while the native
+# Hermes dashboard session remains protected and injected by HermesSession.
+#
+# Keep this independent from ADMIN_PASSWORD. Reusing that password in a custom
+# header would expose the browser-admin credential to every Desktop request and
+# make revoking one client unnecessarily disruptive.
+HERMES_DESKTOP_ACCESS_TOKEN = os.environ.get(
+    "HERMES_DESKTOP_ACCESS_TOKEN", ""
+).strip()
+HERMES_DESKTOP_ACCESS_HEADER = "x-hermes-desktop-token"
+if HERMES_DESKTOP_ACCESS_TOKEN and len(HERMES_DESKTOP_ACCESS_TOKEN) < 32:
+    raise RuntimeError(
+        "HERMES_DESKTOP_ACCESS_TOKEN must be at least 32 characters when set"
+    )
+
 # ── Env var registry ──────────────────────────────────────────────────────────
 # (key, label, category, is_secret)
 ENV_VARS = [
@@ -1213,7 +1231,16 @@ def _verify_auth_token(token: str) -> bool:
 
 
 def _is_authenticated(request: Request) -> bool:
-    return _verify_auth_token(request.cookies.get(COOKIE_NAME, ""))
+    if _verify_auth_token(request.cookies.get(COOKIE_NAME, "")):
+        return True
+
+    # Starlette's Headers mapping is case-insensitive and is available on both
+    # Request and WebSocket, so this protects HTTP probes and WebSocket upgrades.
+    # Empty or unconfigured values never authenticate.
+    if HERMES_DESKTOP_ACCESS_TOKEN:
+        supplied = request.headers.get(HERMES_DESKTOP_ACCESS_HEADER, "")
+        return _hmac.compare_digest(supplied, HERMES_DESKTOP_ACCESS_TOKEN)
+    return False
 
 
 def _safe_return_to(value: str) -> str:
