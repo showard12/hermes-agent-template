@@ -143,6 +143,11 @@ RUN chmod +x /app/start.sh
 
 ENV HOME=/data
 ENV HERMES_HOME=/data/.hermes
+# Hermes isolates child-process HOME at /data/.hermes/home inside containers.
+# Keep Codex pointed at the persistent login/config directory created by
+# `codex login`; otherwise `codex app-server` misses /data/.codex/auth.json even
+# though an interactive `codex exec` launched from the container works.
+ENV CODEX_HOME=/data/.codex
 
 # Points hermes at our pre-built TUI bundle. hermes's _make_tui_argv checks
 # HERMES_TUI_DIR first: if dist/entry.js exists there, it skips the npm
