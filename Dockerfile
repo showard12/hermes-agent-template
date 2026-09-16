@@ -36,7 +36,15 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates git tini && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
+    npm install --global --no-fund --no-audit @openai/codex@0.154.0 && \
+    codex --version && \
     rm -rf /var/lib/apt/lists/*
+
+# Hermes' openai-codex provider launches `codex app-server` as a subprocess.
+# Install it in the immutable image rather than interactively in the running
+# Railway container: the latter disappears on every deploy. Authentication and
+# config remain on the persistent /data volume (HOME is set below), while the
+# executable lives at /usr/bin/codex and therefore survives image rebuilds.
 
 # Install hermes-agent (provides the `hermes` CLI) and pre-build its React
 # dashboard so `hermes dashboard` has nothing to build at runtime.
