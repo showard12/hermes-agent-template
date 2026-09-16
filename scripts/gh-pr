@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+# Explicit write-capable GitHub identity for user-authorized PR publishing.
+#
+# /usr/local/bin/gh is intentionally reserved for the narrowly scoped reviewer
+# GitHub App.  Do not let its installation token, or an inherited Railway
+# token, mask the persisted showard12 login used by this command.
+unset GH_TOKEN GITHUB_TOKEN
+export HOME="${HERMES_GH_USER_HOME:-/data}"
+
+exec /usr/bin/gh "$@"

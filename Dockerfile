@@ -141,9 +141,11 @@ RUN uv pip install --system --no-cache -r /app/requirements.txt
 COPY scripts/github_app_token.py /usr/local/lib/hermes/github_app_token.py
 COPY scripts/configure_github_webhook.py /usr/local/lib/hermes/configure_github_webhook.py
 COPY scripts/gh /usr/local/bin/gh
+COPY scripts/gh-pr /usr/local/bin/gh-pr
 RUN chmod 755 /usr/local/lib/hermes/github_app_token.py \
               /usr/local/lib/hermes/configure_github_webhook.py \
-              /usr/local/bin/gh
+              /usr/local/bin/gh \
+              /usr/local/bin/gh-pr
 
 RUN mkdir -p /data/.hermes
 
