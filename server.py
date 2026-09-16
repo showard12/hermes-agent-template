@@ -218,6 +218,12 @@ HERMES_DASHBOARD_HOST = "127.0.0.1"
 HERMES_DASHBOARD_PORT = int(os.environ.get("HERMES_DASHBOARD_PORT", "9119"))
 HERMES_DASHBOARD_URL = f"http://{HERMES_DASHBOARD_HOST}:{HERMES_DASHBOARD_PORT}"
 
+# Hermes' signed inbound-webhook adapter listens only on loopback. Railway
+# exposes this Starlette process, so /webhooks/* is forwarded explicitly while
+# preserving GitHub's signature and delivery headers. The upstream adapter owns
+# HMAC validation, event filtering, rate limiting, body limits, and idempotency.
+HERMES_WEBHOOK_URL = "http://127.0.0.1:8644"
+
 # Header hermes' own SPA uses to present its per-process session token
 # (hermes_cli/web_server.py's _SESSION_HEADER_NAME) — see
 # set_active_model_via_hermes()/_get_hermes_session_token() for why our own
@@ -3006,6 +3012,35 @@ async def route_proxy(request: Request) -> Response:
     return await _proxy_to_dashboard(request)
 
 
+async def route_webhook_proxy(request: Request) -> Response:
+    """Public, signature-verified ingress for Hermes' loopback webhook adapter."""
+    try:
+        body = await request.body()
+        upstream = await get_http_client().request(
+            request.method,
+            f"{HERMES_WEBHOOK_URL}{request.url.path}",
+            headers={
+                key: value
+                for key, value in request.headers.items()
+                if key.lower() not in HOP_BY_HOP
+            },
+            content=body,
+            timeout=httpx.Timeout(15.0, connect=3.0),
+        )
+    except (httpx.ConnectError, httpx.ConnectTimeout):
+        return JSONResponse({"status": "unavailable"}, status_code=503)
+    except httpx.RequestError:
+        return JSONResponse({"status": "bad_gateway"}, status_code=502)
+
+    headers = {
+        key: value
+        for key, value in upstream.headers.items()
+        if key.lower() not in HOP_BY_HOP
+        and key.lower() not in ("content-encoding", "content-length")
+    }
+    return Response(upstream.content, status_code=upstream.status_code, headers=headers)
+
+
 async def route_setup_404(request: Request) -> Response:
     """Typos under /setup/* should 404 here — not fall through to the proxy."""
     if err := guard(request): return err
@@ -3239,6 +3274,9 @@ ANY_METHOD = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
 routes = [
     # Public — no auth required.
     Route("/health",                            route_health),
+    # Public by design: Hermes validates GitHub's X-Hub-Signature-256 before
+    # dispatch. This must precede the authenticated dashboard catch-all.
+    Route("/webhooks/{path:path}",              route_webhook_proxy, methods=["POST"]),
     # Our sign-in lives under /setup/* so the bare /login path stays free.
     # hermes' own gated dashboard redirects unauthenticated requests there, and
     # a route of ours at /login would answer instead — the browser would bounce

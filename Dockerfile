@@ -134,6 +134,17 @@ RUN printf 'docker\n' > /opt/hermes-agent/.install_method
 COPY requirements.txt /app/requirements.txt
 RUN uv pip install --system --no-cache -r /app/requirements.txt
 
+# Authenticate every `gh` invocation with a short-lived GitHub App
+# installation token. The app ID, installation ID, and private key live on the
+# persistent volume under /data/.hermes/github-app; no long-lived personal
+# access token is exposed to Hermes or Codex.
+COPY scripts/github_app_token.py /usr/local/lib/hermes/github_app_token.py
+COPY scripts/configure_github_webhook.py /usr/local/lib/hermes/configure_github_webhook.py
+COPY scripts/gh /usr/local/bin/gh
+RUN chmod 755 /usr/local/lib/hermes/github_app_token.py \
+              /usr/local/lib/hermes/configure_github_webhook.py \
+              /usr/local/bin/gh
+
 RUN mkdir -p /data/.hermes
 
 COPY server.py /app/server.py

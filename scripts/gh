@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+REAL_GH=/usr/bin/gh
+TOKEN_HELPER=/usr/local/lib/hermes/github_app_token.py
+
+# Respect an explicitly supplied token for administrative/debug sessions.
+if [ -n "${GH_TOKEN:-}" ] || [ -n "${GITHUB_TOKEN:-}" ]; then
+  exec "$REAL_GH" "$@"
+fi
+
+token="$($TOKEN_HELPER)" || exit $?
+GH_TOKEN="$token" exec "$REAL_GH" "$@"

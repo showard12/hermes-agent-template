@@ -20,6 +20,11 @@ mkdir -p /data/.hermes/cron /data/.hermes/sessions /data/.hermes/logs \
          /data/.hermes/workspace /data/.hermes/skins /data/.hermes/plans \
          /data/.hermes/home
 
+# GitHub App credentials are provisioned once on the persistent volume after
+# app installation. Keep the directory private even before files are present.
+mkdir -p /data/.hermes/github-app
+chmod 700 /data/.hermes/github-app
+
 # Stamp the install method as "docker" so hermes treats this as an immutable
 # container image, not a pip checkout. hermes's detect_install_method() reads
 # $HERMES_HOME/.install_method FIRST (before any .git / pip fallback). Without
@@ -38,6 +43,15 @@ if [ ! -f /data/.hermes/config.yaml ] && [ -f /opt/hermes-agent/cli-config.yaml.
 fi
 
 [ ! -f /data/.hermes/.env ] && touch /data/.hermes/.env
+
+# Configure the signed, repo-filtered GitHub App webhook route before the
+# gateway reads config.yaml. The secret arrives as a Railway variable only for
+# this bootstrap step; unset it before server.py spawns Hermes/Codex so it never
+# enters an agent's environment.
+if [ -n "${HERMES_GITHUB_WEBHOOK_SECRET:-}" ]; then
+  /usr/local/lib/hermes/configure_github_webhook.py
+  unset HERMES_GITHUB_WEBHOOK_SECRET
+fi
 
 # Bootstrap OAuth tokens from env var (e.g. xAI Grok SuperGrok).
 # Set HERMES_AUTH_JSON_BOOTSTRAP to the contents of a locally-generated
