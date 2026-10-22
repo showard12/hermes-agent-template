@@ -44,6 +44,12 @@ fi
 
 [ ! -f /data/.hermes/.env ] && touch /data/.hermes/.env
 
+# Install the trusted review reader and its matching instructions before config
+# discovery. Copy on every boot so persistent volumes receive versioned fixes.
+mkdir -p /data/.hermes/plugins/pantryfy-review /data/.hermes/skills/business/pantryfy-pr-review
+cp /app/hermes-plugins/pantryfy-review/{__init__.py,plugin.yaml} /data/.hermes/plugins/pantryfy-review/
+cp /app/hermes-skills/pantryfy-pr-review/SKILL.md /data/.hermes/skills/business/pantryfy-pr-review/
+
 # Configure the signed, repo-filtered GitHub App webhook route before the
 # gateway reads config.yaml. The secret arrives as a Railway variable only for
 # this bootstrap step; unset it before server.py spawns Hermes/Codex so it never

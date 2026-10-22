@@ -140,6 +140,8 @@ RUN uv pip install --system --no-cache -r /app/requirements.txt
 # access token is exposed to Hermes or Codex.
 COPY scripts/github_app_token.py /usr/local/lib/hermes/github_app_token.py
 COPY scripts/configure_github_webhook.py /usr/local/lib/hermes/configure_github_webhook.py
+COPY hermes-plugins/ /app/hermes-plugins/
+COPY hermes-skills/ /app/hermes-skills/
 COPY scripts/gh /usr/local/bin/gh
 COPY scripts/gh-pr /usr/local/bin/gh-pr
 RUN chmod 755 /usr/local/lib/hermes/github_app_token.py \
