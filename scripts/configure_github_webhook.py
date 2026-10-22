@@ -25,6 +25,11 @@ def main() -> int:
         if isinstance(loaded, dict):
             config = loaded
 
+    plugins = config.setdefault("plugins", {})
+    enabled = plugins.setdefault("enabled", [])
+    if "pantryfy-review" not in enabled:
+        enabled.append("pantryfy-review")
+
     platforms = config.setdefault("platforms", {})
     webhook = platforms.setdefault("webhook", {})
     webhook["enabled"] = True
@@ -54,12 +59,14 @@ def main() -> int:
             "window_seconds": 30,
             "max_wait_seconds": 120,
         },
-        "toolsets": ["terminal"],
+        "toolsets": ["pantryfy_review"],
         "skills": ["pantryfy-pr-review"],
         "prompt": (
             "GitHub pull_request event for showard12/pantry_app: action={action}, "
-            "PR=#{number}, URL={pull_request.html_url}. Follow the loaded "
-            "pantryfy-pr-review skill."
+            "PR=#{number}, URL={pull_request.html_url}. Review unattended with "
+            "pantryfy_pr_read following the loaded pantryfy-pr-review skill. "
+            "Do not request shell approvals. Return the final review; the webhook "
+            "publishes it automatically."
         ),
         "deliver": "github_comment",
         "deliver_extra": {

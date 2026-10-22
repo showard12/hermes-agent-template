@@ -1,0 +1,5 @@
+name: pantryfy-review
+version: 1.0.0
+description: Bounded read-only GitHub tools for unattended Pantryfy PR reviews.
+provides_tools:
+  - pantryfy_pr_read
